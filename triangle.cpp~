@@ -1,0 +1,12 @@
+
+
+
+class Triangle : Material {
+	
+	public:
+		Vec3 normal;
+		Vec3 a, b, c;
+		Vec3 center; //Optional
+		Triangle () {};
+		Triangle (Vec3 x, Vec3 y, Vec3 z) : a(x), b(y), c(z) {}
+};
