@@ -27,3 +27,18 @@ Vec3 Vec3::negatize(Vec3 v){
 float Vec3::dot(Vec3 v, Vec3 d){
 	return v.x * d.x + v.y *d.y + v.z * d.z;
 }
+
+Vec3 Vec3::cross(Vec3 a, Vec3 b){
+	return Vec3(a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x);
+}
+
+Vec3 Vec3::reflect(Vec3 I, Vec3 N){
+	float a = 2.0 * Vec3::dot(I, N);
+	Vec3 b = Vec3::mul(a, N);
+	Vec3 c = Vec3::subtract(I, b);
+	return c;
+}
+
+Vec3 Vec3::mul(float num, Vec3 vec){
+	return Vec3(num*vec.x, num*vec.y, num*vec.z);
+}
