@@ -10,6 +10,8 @@ class Vec3{
 		static Vec3 add(Vec3, Vec3);
 		static Vec3 subtract(Vec3, Vec3);
 		static Vec3 normalize(Vec3);
+		static Vec3 negatize(Vec3);
+		static float dot(Vec3, Vec3);
 		Vec3(){};
 		Vec3(float x, float y, float z) : x(x), y(y), z(z) {vector[0] = x; vector[1] = y, vector[2] = z;};
 

@@ -19,3 +19,11 @@ Vec3 Vec3::normalize(Vec3 v){
 	
 	return Vec3(v.x/length,v.y/length,v.z/length);
 }
+
+Vec3 Vec3::negatize(Vec3 v){
+	return Vec3(-v.x, -v.y, -v.z);
+}
+
+float Vec3::dot(Vec3 v, Vec3 d){
+	return v.x * d.x + v.y *d.y + v.z * d.z;
+}

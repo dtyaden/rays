@@ -5,10 +5,11 @@
 
 class Ray{
 public:
-	Vec3 vector;
 	Vec3 start;
+	Vec3 end;
+	//static Ray getRay(Vec3 start, Vec3 end){return Ray(start, end);};
 	Ray(){};
-	Ray(Vec3 vector, Vec3 start) : vector(vector), start(start){};
+	Ray(Vec3 start, Vec3 end) : start(start), end(end){};
 };
 
 #endif
