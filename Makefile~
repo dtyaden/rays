@@ -1,4 +1,4 @@
-default: main.o triangle.o sphere.o camera.o vec3.o 
+default: main.o triangle.o camera.o vec3.o sphere.o
 		g++ main.o triangle.o camera.o vec3.o sphere.o -o ray
 		
 main.o: main.cpp
