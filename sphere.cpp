@@ -15,9 +15,11 @@ Rayhit* Sphere::intersect(Vec3 pixel, Vec3 vector, Geom* geom){
 	p3 -= radius * radius; //-R^2
 	p3 *= ddotd;//discriminant right side
 	float p4 = p2 - p3;//discriminant
+	
 	if(p4 < 0){
 		Rayhit * r = new Rayhit();
 		r->isNull = 1;
+		//std::cout << "wtfm9\n";
 		return r;
 	}
 

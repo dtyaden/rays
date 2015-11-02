@@ -88,7 +88,18 @@ float getTTriangle(Triangle* t, Vec3 pixel, Vec3 vector ){ //Pixel = start
 	
 
 }
-float diffuseIntersections(Vec3 start, Vec3 v){
+
+//start = point of intersection, v = unit vector to light
+float diffuseIntersections(Vec3 start, Vec3 v, Vec3* normal){
+	float diffuse = Vec3::dot(v, *normal);
+	//diffuse = fabs(diffuse);
+	diffuse = diffuse*1/2 + .5;
+	cout << diffuse << "\n";
+	return diffuse;
+
+}
+//start = point of intersection, v = unit vector to light
+float shadow(Vec3 start, Vec3 v){
 	Geom* closest = NULL;
 	float value = 1;
 	float t = 999;
@@ -117,6 +128,18 @@ float diffuseIntersections(Vec3 start, Vec3 v){
 				else return .2;
 }
 
+void addTriangle(Vec3 a, Vec3 b, Vec3 c, Vec3 color){
+	Triangle * tri = new Triangle(a,b,c, color);
+	triangles.push_back(tri);
+	scene.push_back(tri);
+}
+
+void addSphere(float radius, Vec3 position, Vec3 color){
+	Sphere* sp =  new Sphere(radius,position, color);
+	spheres.push_back(sp);
+	scene.push_back(sp);
+}
+
 int main(int argc, char *argv[]){
 	height = 512;
 	width = 512;
@@ -127,22 +150,29 @@ int main(int argc, char *argv[]){
 	Vec3 light(3,5,-15);
 	camera = new Camera(Vec3(0,0,0), distanceToCamera, (float) width, (float) width);
 	camera->test();
-	Vec3 x(-6,-2,-20);
-	Vec3 y(8,-2,-20);
-	Vec3 z(8,10,-20);
+	Vec3 x(-6,-2,-30);
+	Vec3 y(8,-2,-30);
+	Vec3 z(8,10,-30);
 	Triangle * tri = new Triangle(x,y,z, Vec3(1,0,1));
-	//triangles.push_back(tri);
-	//scene.push_back(tri);
+	triangles.push_back(tri);
+	scene.push_back(tri);
+	x = Vec3(-6,-2,-30);
+	y = Vec3(8,10,-30);
+	z = Vec3(-6, 10, -30);
+	addTriangle(x,y,z, Vec3(1,0,1));
+
+	x = Vec3(8,10,-30);
+	y = Vec3(8,-2,-30);
+	z = Vec3(8,-2,-15);
+	addTriangle(x,y,z,Vec3(1,0,0));
 	Sphere * sp =  new Sphere(1,Vec3(-4,0,-10), Vec3(1,0,0));
 	//spheres.push_back(sp);
 	//scene.push_back(sp); //Radius? pos, color
 	sp =  new Sphere(1,Vec3(-2,0,-10), Vec3(1,0,0));
 	//spheres.push_back(sp);
 	//scene.push_back(sp);
-	sp =  new Sphere(2,Vec3(0,0,-16), Vec3(1,0,0));
-	spheres.push_back(sp);
-	scene.push_back(sp);
-	sp =  new Sphere(1,Vec3(-2,-3,-10), Vec3(1,0,0));
+	addSphere(2, Vec3(0,0,-16), Vec3(1,0,0));
+	addSphere(1,Vec3(-2,-3,-10), Vec3(1,0,0));
 	//spheres.push_back(sp);
 	//scene.push_back(sp);
 	unsigned int imagePixels = height*width;
@@ -161,7 +191,6 @@ int main(int argc, char *argv[]){
 			//cout<<pixel.x<<" "<<pixel.y<<" "<<pixel.z<<"\n";
 			//Vector from Pixel to Camera (GetRay?)
 			Vec3 v = Vec3::subtract(camera->position ,pixel);
-
 			//cout<< v.x<< " " << v.y<< " " <<v.z<< "\n";
 			
 			//Normalize Vector : Pixel to Camera
@@ -169,14 +198,20 @@ int main(int argc, char *argv[]){
 			float t = 999;
 			Geom* closest = NULL;
 			Rayhit* hit = NULL;
+			Vec3* normal;
 				for(int j = 0; j < triangles.size();j++){
 					Rayhit* r = triangles.at(j)->intersect(pixel, v, triangles.at(j));
 				
 				if(r->isNull);
 				else if(r->time < t){
 					t = r->time;
-					closest = triangles.at(j);
+					Triangle* temp = triangles.at(j);
+					closest = temp;
 					hit = r;
+					//calculate normal for triangle
+					Vec3 p1 = Vec3::subtract(temp->a, temp->b);
+					Vec3 p2 = Vec3::subtract(temp->a, temp->c);
+					normal = new Vec3(Vec3::normalize(Vec3::cross(p1,p2)));
 					}
 				}
 				for(int j = 0; j < spheres.size();j++){
@@ -187,16 +222,18 @@ int main(int argc, char *argv[]){
 					t = r->time;
 					closest = spheres.at(j);
 					hit = r;
+					//calculate normal for the sphere
+					normal = new Vec3(Vec3::normalize(Vec3::subtract(spheres.at(j)->position, hit->position)));
 					}
 				}
 
 			if(closest == NULL){
-				colorR = 100;
-				colorG = 100;
-				colorB = 100;
+				colorR = 0;
+				colorG = 0;
+				colorB = 0;
 			}
 			else{
-				float value = diffuseIntersections(hit->position, Vec3::normalize(Vec3::subtract(hit->position, light)));
+				float value = diffuseIntersections(hit->position, Vec3::normalize(Vec3::subtract(hit->position, light)), normal);
 				//cout<<tri->color.x<<"\n";
 				//cout<<closest->color.x<<"\n";
 				colorR = closest->color.x*255 * value;
