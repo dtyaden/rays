@@ -6,11 +6,20 @@
 
 class Rayhit{
 	public:
-		int time;
+		float time;
+		int isNull;
 		int shading;
-		Vec3 location;
+		Vec3 position;
 		Ray ray;
+		Rayhit(){isNull = 0;};
+};
 
+class Geom{
+
+public:
+	int reflective;
+	Vec3 color;
+	virtual Rayhit* intersect(Vec3, Vec3, Geom*){};
 };
 
 #endif

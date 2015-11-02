@@ -9,7 +9,7 @@ class Geom{
 public:
 	int reflective;
 	Vec3 color;
-	virtual Rayhit* intersect(){};
+	virtual Rayhit* intersect(Vec3, Vec3, Geom*){};
 };
 
 #endif

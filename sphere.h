@@ -2,17 +2,18 @@
 #define SPHERE
 #include "ray.h"
 #include "rayhit.h"
-#include "geom.h"
 #include "vec3.h"
+#include "math.h"
+#include <cstddef>
+#include <iostream>
 
 class Sphere : public Geom{
 	public:
 		float radius;
 		Vec3 position;
-		Vec3 color;
-		Rayhit* intersect(Ray);
+		Rayhit* intersect(Vec3 pixel, Vec3 vector, Geom* geom);
 		Sphere(){};
-		Sphere(float radius, Vec3 position, Vec3 color) : radius(radius), position(position), color(color){};
+		Sphere(float radius, Vec3 position, Vec3 color) : radius(radius), position(position){this->color = color;};
 };
 
 #endif

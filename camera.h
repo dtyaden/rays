@@ -1,7 +1,7 @@
 #ifndef CAMERA
 #define CAMERA
 #include "vec3.h"
-
+#include <iostream>
 class Camera{
 	
 	public:
@@ -11,7 +11,7 @@ class Camera{
 	float screenHeight;
 	float pixelWidth;
 	float pixelHeight;
-
+	void test(){std::cout<<"whahfuiefefui\n";};
 	Camera(Vec3, float,float,float);//use for square screen
 
 };

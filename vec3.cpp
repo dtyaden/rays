@@ -8,7 +8,7 @@ Vec3 Vec3::add(Vec3 a, Vec3 b){
 
 Vec3 Vec3::subtract(Vec3 start, Vec3 end){
 
-	return Vec3((end.x - start.x), (end.y-start.x), (end.z-start.z));
+	return Vec3((end.x - start.x), (end.y-start.y), (end.z-start.z));
 }
 
 Vec3 Vec3::normalize(Vec3 v){
