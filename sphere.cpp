@@ -19,11 +19,9 @@ Rayhit* Sphere::intersect(Vec3 pixel, Vec3 vector, Geom* geom){
 	if(p4 < 0){
 		Rayhit * r = new Rayhit();
 		r->isNull = 1;
-		//std::cout << "wtfm9\n";
 		return r;
 	}
 
-	//std::cout<<"HIT!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
 	p4 = sqrt(p4);
 	float plus = fmax(0.0f, (p1 + p4));
 	float minus = fmax(0.0f, (p1 - p4)); 
@@ -32,13 +30,12 @@ Rayhit* Sphere::intersect(Vec3 pixel, Vec3 vector, Geom* geom){
 	if( t<= 0){
 		Rayhit * r = new Rayhit();
 		r->isNull = 1;
-		//std::cout << "wtfm9\n";
 		return r;
 	}
 	Rayhit* r = new Rayhit();
 	r->position = Vec3::mul(t, d);
-	r->direction = d;
 	r->position = Vec3::add(e, r->position);
+	r->direction = vector;
 	r->time = t;
 	return r;
 }

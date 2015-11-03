@@ -18,10 +18,11 @@ Camera* camera;
 std::vector<Geom*> scene;
 std::vector<Triangle*> triangles;
 std::vector<Sphere*> spheres;
-Vec3 light(0,8,-13.5);
+Vec3 light(3,5,-15);
 int isSphere = 0;
-int renderReflections = 0;
+int renderReflections = 1;
 int mode = 0;
+int skipShadows = 0;
 
 //start = point of intersection, v = unit vector to light
 float diffuseIntersections(Vec3 start, Vec3 v, Vec3* normal){
@@ -33,24 +34,28 @@ float diffuseIntersections(Vec3 start, Vec3 v, Vec3* normal){
 
 }
 
-//start = point of intersection, v = unit vector to light
 float shadow(Rayhit* hit){
-
+	if(skipShadows)//for fancy option
+		return 1;
+		
+	//get unit vector to light
 	Vec3 v(Vec3::normalize(Vec3::subtract(hit->position, light)));
-
+	
 	Vec3 start = hit->position;
 	Geom* closest = NULL;
+	
 	float value = 1;
-	float multiplier = (float) 1/100;
+	float multiplier = (float) 1/100;//anti-self intersect
 	float t = 999;
-
 
 	start.x = v.x*multiplier + start.x;
 	start.y = v.y*multiplier + start.y;
 	start.z = v.z*multiplier + start.z;
+	
 	Rayhit* ray = new Rayhit();
 	ray -> isNull = 1;
-
+	
+	//attempt to intersect every geom
 	for(int j = 0; j < triangles.size();j++){
 		Rayhit* r = triangles.at(j)->intersect(start, v, triangles.at(j));
 		
@@ -84,6 +89,7 @@ float shadow(Rayhit* hit){
 				}
 			}
 		}
+		//if there is a hit in the intersections, return .2, otherwise return 1
 		if(ray->isNull)
 			return value;
 		else return .2;
@@ -93,22 +99,26 @@ Vec3 reflection(Rayhit* hit, int n, Vec3* normal,Geom* intersectedGeom){
 	Vec3 direction;
 	Vec3 reflectionVector;
 	float a;
-	direction = hit->direction;
+	
+	//calculate incident
+	direction = Vec3::normalize(hit->direction);
+	
+	//calculate reflection vector
 	a = 2*Vec3::dot(direction, *normal);
-	reflectionVector = Vec3::normalize(Vec3::subtract(Vec3::mul(a, *normal), direction));
-
+	reflectionVector = Vec3::subtract(Vec3::mul(a, *normal), direction);
 	Vec3 start = hit->position;
 	Geom* closest = NULL;
 	float value = 1;
-	float multiplier = (float) 1/100;
+	float multiplier = (float) 1/100;//apply so geometry won't intersect itself
 	float t = 999;
-
+	
 	start.x = reflectionVector.x*multiplier + start.x;
 	start.y = reflectionVector.y*multiplier + start.y;
 	start.z = reflectionVector.z*multiplier + start.z;
 	Rayhit* ray = new Rayhit();
 	ray -> isNull = 1;
 
+	//attempt to intersect every geom
 	for(int j = 0; j < triangles.size();j++){
 		Rayhit* r = triangles.at(j)->intersect(start, reflectionVector, triangles.at(j));
 		
@@ -127,50 +137,38 @@ Vec3 reflection(Rayhit* hit, int n, Vec3* normal,Geom* intersectedGeom){
 		}
 	for(int j = 0; j < spheres.size();j++){
 		Rayhit* r = spheres.at(j)->intersect(start, reflectionVector, spheres.at(j));
-			
 		if(r->isNull);
 		else if(r->time < t){
 			t = r->time;
-			normal = new Vec3(Vec3::normalize(Vec3::subtract(spheres.at(j)->position, hit->position)));
+			normal = new Vec3(Vec3::normalize(Vec3::subtract(spheres.at(j)->position, r->position)));
 			closest = spheres.at(j);
 			ray = r;
 			}
 		}
 
-		if(ray->isNull || n > 10){
-			if(n>10)
-				cout<<"what\n";
-			Vec3::print(hit->position);
-			cout<< " hit pos\n";
-			Vec3::print(hit->direction);
-			cout<< " hit dir\n";
-			Vec3::print(*normal);
-			cout<< " hit norm\n";
-			Vec3::print(reflectionVector);
-			cout<< " reflection\n";
-			//cout<<"returning black\n";
+		if(ray->isNull || n == 10){
+			
 			return Vec3(0,0,0);//return black after ten bounces/no hit
 		}
 		else if(closest->reflective){
 			return reflection(ray, ++n, normal, closest);
-			cout<<"reflection\n";
 		}
 		else{
-			//cout<<"returning actual color\n";
+			//calculate shadow and diffuse for objects in reflection
 			Vec3 hitToLight = Vec3::normalize(Vec3::subtract(ray->position, light));
-			float inShadow = shadow(hit);
-			float diffuse = 1;
-			if(inShadow)
-				diffuse = diffuseIntersections(ray->position, Vec3::normalize(hitToLight), normal);
-			else diffuse = 1;
+			float inShadow = 1;
+			inShadow = shadow(ray);
+			float diffuse;
+			diffuse = diffuseIntersections(ray->position, Vec3::normalize(hitToLight), normal);
 			Vec3 newColor(Vec3::mul(diffuse,(Vec3::mul(inShadow,closest->color))));
+			
 			
 			return newColor;
 		}
 
 }
 
-
+//helper to build scene
 void addTriangle(Vec3 a, Vec3 b, Vec3 c, Vec3 color, int reflective){
 	Triangle * tri = new Triangle(a,b,c, color);
 	tri->reflective = reflective;
@@ -178,6 +176,7 @@ void addTriangle(Vec3 a, Vec3 b, Vec3 c, Vec3 color, int reflective){
 	scene.push_back(tri);
 }
 
+//helper to build scene
 void addSphere(float radius, Vec3 position, Vec3 color, int reflective){
 	Sphere* sp =  new Sphere(radius,position, color);
 	sp->reflective = reflective;
@@ -185,28 +184,101 @@ void addSphere(float radius, Vec3 position, Vec3 color, int reflective){
 	scene.push_back(sp);
 }
 
-void buildReference(){
-	Vec3 x(-6,-2,-30);
-	Vec3 y(8,-2,-30);
-	Vec3 z(8,10,-30);
-	addTriangle(x,y,z, Vec3(1,0,1),0);
-	x = Vec3(-6,-2,-30);
-	y = Vec3(8,10,-30);
-	z = Vec3(-6, 10, -30);
-	addTriangle(x,y,z, Vec3(1,0,1),0);
 
-	x = Vec3(8,10,-30);
-	y = Vec3(8,-2,-30);
-	z = Vec3(8,-2,-15);
+//creates a well known character
+void buildFancy(){
+	light = Vec3(0,0, -10);
+	
+	skipShadows = 1;
+	Vec3 x(-4.5,0,-14);
+	Vec3 y(-2,-1.5,-14);
+	Vec3 z(-2,1.5,-14);
+	addTriangle(x,y,z, Vec3(0,0,0),0);
+	
+	x = Vec3(-20,6,-14);
+	y = Vec3(-20,3,-14);
+	z = Vec3(20,6,-14);
+	addTriangle(x,y,z, Vec3(0,0,.8),0);
+	x = Vec3(-20,3,-14);
+	y = Vec3(20,3,-14);
+	z = Vec3(20,6,-14);
+	addTriangle(x,y,z, Vec3(0,0,.8),0);
+	
+	x = Vec3(-20,-6,-14);
+	y = Vec3(-20,-3,-14);
+	z = Vec3(20,-6,-14);
+	addTriangle(x,y,z, Vec3(0,0,.8),0);
+	x = Vec3(-20,-3,-14);
+	y = Vec3(20,-3,-14);
+	z = Vec3(20,-6,-14);
+	addTriangle(x,y,z, Vec3(0,0,.8),0);
+	
+	
+	addSphere(2,Vec3(-5,0,-16),Vec3(1,1,0),0);
+	addSphere(1,Vec3(-1,0,-16),Vec3(1,1,1),0);
+	addSphere(1,Vec3(3,0,-16),Vec3(1,1,1),0);
+	addSphere(1,Vec3(6.5,0,-16),Vec3(1,1,1),0);
+}
+
+//turn walls into mirrors, move light source, move reflective
+//right sphere up, make big sphere solid blue
+void buildCustom(){
+	
+	light = Vec3(-3,5,-13);
+	Vec3 x(-8,-2,-20);
+	Vec3 y(8,-2,-20);
+	Vec3 z(8,10,-20);
+	addTriangle(x,y,z, Vec3(0,0,1),1);
+	x = Vec3(-8,-2,-20);
+	y = Vec3(8,10,-20);
+	z = Vec3(-8, 10, -20);
+	addTriangle(x,y,z, Vec3(0,0,1),1);
+	
+	//right side triangle
+	x = Vec3(8,-2,-20);
+	y = Vec3(8,-2,-10);
+	z = Vec3(8,10,-20);
+	addTriangle(x,y,z,Vec3(1,0,0),1);
+	//floor
+	x = Vec3(-8,-2,-20);
+	y = Vec3(8,-2,-10);
+	z = Vec3(8,-2,-20);
+	addTriangle(x,y,z,Vec3(.8,.8,.8),1);
+	x = Vec3(-8,-2,-20);
+	y = Vec3(-8,-2,-10);
+	z = Vec3(8,-2,-10);
+	addTriangle(x,y,z,Vec3(.8,.8,.8),1);
+
+	addSphere(1, Vec3(-3,-1,-14), Vec3(1,0,0),0);
+	addSphere(1,Vec3(3,3,-14), Vec3(0,0,1),1);
+	addSphere(2,Vec3(0,0,-16),Vec3(.2,0,.8),0);
+}
+
+void buildReference(){
+	//back wall
+	Vec3 x(-8,-2,-20);
+	Vec3 y(8,-2,-20);
+	Vec3 z(8,10,-20);
+	addTriangle(x,y,z, Vec3(0,0,1),0);
+	x = Vec3(-8,-2,-20);
+	y = Vec3(8,10,-20);
+	z = Vec3(-8, 10, -20);
+	addTriangle(x,y,z, Vec3(0,0,1),0);
+	
+	//right side triangle
+	x = Vec3(8,-2,-20);
+	y = Vec3(8,-2,-10);
+	z = Vec3(8,10,-20);
 	addTriangle(x,y,z,Vec3(1,0,0),0);
-	x = Vec3(-6,-2,-30);
-	y = Vec3(8,-2,-15);
-	z = Vec3(8,-2,-30);
-	addTriangle(x,y,z,Vec3(.5,.5,.5),0);
-	x = Vec3(-6,-2,-30);
-	y = Vec3(-6,-2,-15);
-	z = Vec3(8,-2,-15);
-	addTriangle(x,y,z,Vec3(.5,.5,.5),0);
+	//floor
+	x = Vec3(-8,-2,-20);
+	y = Vec3(8,-2,-10);
+	z = Vec3(8,-2,-20);
+	addTriangle(x,y,z,Vec3(.8,.8,.8),0);
+	x = Vec3(-8,-2,-20);
+	y = Vec3(-8,-2,-10);
+	z = Vec3(8,-2,-10);
+	addTriangle(x,y,z,Vec3(.8,.8,.8),0);
 
 	addSphere(1, Vec3(-3,-1,-14), Vec3(1,0,0),0);
 	addSphere(1,Vec3(3,-1,-14), Vec3(0,0,1),1);
@@ -221,22 +293,20 @@ int main(int argc, char *argv[]){
 	unsigned char colorG;
 	unsigned char colorB;
 	camera = new Camera(Vec3(0,0,0), distanceToCamera, (float) width, (float) width);
-	camera->test();
 
 	if(argc<2){
 		cout<<"no argument specified, rendering to reference.png\n";
 		buildReference();
 	}else if(strcmp(argv[1],"custom") == 0){
 		mode = 1;
+		buildCustom();
+	}
+	else if(strcmp(argv[1], "fancy") ==0){
+		mode = 2;
+		buildFancy();
 	}
 	else buildReference();
 
-	
-	//spheres.push_back(sp);
-	//scene.push_back(sp);
-	
-	//spheres.push_back(sp);
-	//scene.push_back(sp);
 	unsigned int imagePixels = height*width;
 	unsigned char image[height*width*3];//red,green,blue
 	unsigned int imagePointer = 0;
@@ -245,7 +315,7 @@ int main(int argc, char *argv[]){
 	for(int x = 0; x < width; x++){//row
 		for(int y = 0; y < height; y++){//column
 
-
+			//convert location of pixel to "world coordinates"
 			smahBoat[0] = (float) ((x*2.0)/height)-1.0 ;
 			smahBoat[1] = (float) ((y*2.0)/width)*-1+1.0;
 			
@@ -254,12 +324,14 @@ int main(int argc, char *argv[]){
 			
 			//Normalize Vector : Pixel to Camera
 			v = Vec3::normalize(v);//ray
-			float t = 999;
-			Geom* closest = NULL;
-			Rayhit* hit = new Rayhit();
-			hit->isNull = 1;
-			Vec3* normal;
-			int test = 0;
+			float t = 999;//hopefully t is never higher than this...
+			
+			Geom* closest = NULL;//calculate closest geom
+			Rayhit* hit = new Rayhit();//rayhit for closest geom
+			hit->isNull = 1;//initialie the rayhit to null
+			Vec3* normal;//required for diffuse and reflection
+			
+			//attempt to intersect each geometry
 				for(int j = 0; j < triangles.size();j++){
 					Rayhit* r = triangles.at(j)->intersect(pixel, v, triangles.at(j));
 				
@@ -289,33 +361,31 @@ int main(int argc, char *argv[]){
 					normal = new Vec3(Vec3::normalize(Vec3::subtract(spheres.at(j)->position, hit->position)));
 					}
 				}
-			if( hit->isNull){
+			if( hit->isNull){//check if no hit
 
 				colorR = 0;
 				colorG = 0;
 				colorB = 0;
 			}
 			else{
-				if(closest->reflective){
+				if(closest->reflective){//check if hit material is reflective
 					Vec3 color;
 					if(renderReflections){
-					Vec3 color(reflection(hit, 0, normal, closest));
-				}
+					color = (reflection(hit, 0, normal, closest));
+					}
 				 	else color = Vec3(0,0,0);
-					colorR = color.x;
-					colorG = color.y;
-					colorB = color.z;
-					//Vec3::print(color);
-					//cout<<"\n";
+				 	
+					colorR = color.x*255;
+					colorG = color.y*255;
+					colorB = color.z*255;
 				}
 				else{
+					//calculate shadow/diffuse
 					Vec3 hitToLight = Vec3::normalize(Vec3::subtract(hit->position, light));
 					float inShadow = shadow(hit);
 					float diffuse = 1;
-					if(inShadow)
-						diffuse = diffuseIntersections(hit->position, Vec3::normalize(hitToLight), normal);
-					else diffuse = 1;
-
+					diffuse = diffuseIntersections(hit->position, Vec3::normalize(hitToLight), normal);
+					
 					colorR = closest->color.x*255 * diffuse*inShadow;
 					colorG = closest->color.y*255 * diffuse*inShadow;
 					colorB = closest->color.z*255 * diffuse*inShadow;
@@ -326,12 +396,13 @@ int main(int argc, char *argv[]){
 			image[imagePointer++] = colorR;
 			image[imagePointer++] = colorG;
 			image[imagePointer++] = colorB;
-			//cout << v.x<<" "<<v.y << " " << v.z <<"\n";
 		}
 	} 
 	if(mode == 0)
 		stbi_write_png("reference.png", width,height,3,image,width*3);
-	else stbi_write_png("custom.png", width,height,3,image,width*3);
+	else if(mode == 1)
+		stbi_write_png("custom.png", width,height,3,image,width*3);
+	else stbi_write_png("fancy.png", width,height,3,image,width*3);
 }
 
 
