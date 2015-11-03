@@ -1,5 +1,5 @@
 #include "vec3.h"
-
+#include <iostream>
 
 Vec3 Vec3::add(Vec3 a, Vec3 b){
 
@@ -41,4 +41,14 @@ Vec3 Vec3::reflect(Vec3 I, Vec3 N){
 
 Vec3 Vec3::mul(float num, Vec3 vec){
 	return Vec3(num*vec.x, num*vec.y, num*vec.z);
+}
+
+float Vec3::length(Vec3 v){
+
+	return sqrt (v.x*v.x + v.y*v.y + v.z*v.z);
+}
+
+void Vec3::print(Vec3 v){
+
+	std::cout << v.x<< " "<<v.y<< " " << v.z;
 }

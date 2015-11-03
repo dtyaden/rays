@@ -10,18 +10,18 @@ Rayhit* Triangle::intersect(Vec3 pixel, Vec3 vector, Triangle* t){
 	float D = t->a.x - t->c.x;
 	float E = t->a.y - t->c.y;
 	float F = t->a.z - t->c.z;
-	float G = pixel.x;
-	float H = pixel.y;
-	float I = pixel.z;
-	float J = t->a.x - vector.x;
-	float K = t->a.y - vector.y;
-	float L = t->a.z - vector.z;
+	float G = vector.x;
+	float H = vector.y;
+	float I = vector.z;
+	float J = t->a.x - pixel.x;
+	float K = t->a.y - pixel.y;
+	float L = t->a.z - pixel.z;
 
 
 	float M = (A*((E*I)-(H*F))) + (B*((G*F)-(D*I)))+(C*((D*H)-(E*G)));
 
 	float tValue = -(F*((A*K)-(J*B))+E*((J*C)-(A*L)) + D*((B*L)-(K*C)))/M;
-	if(t<0){//no hit
+	if(tValue<=0){//no hit
 		Rayhit * r = new Rayhit();
 		r->isNull = 1;
 		return r;
@@ -42,6 +42,7 @@ Rayhit* Triangle::intersect(Vec3 pixel, Vec3 vector, Triangle* t){
 	}
 	//std::cout<<"triangle HIT!!!!!!\n";
 	Rayhit* r = new Rayhit();
+	r->direction = vector;
 	r->position = Vec3::mul(tValue,vector);
 	r->position = Vec3::add(pixel,r->position);
 	r->time = tValue;

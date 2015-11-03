@@ -18,3 +18,5 @@ sphere.o: sphere.cpp
 
 clean:
 	rm ray main.o triangle.o camera.o vec3.o sphere.o
+run: default
+	./ray

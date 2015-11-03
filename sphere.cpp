@@ -29,8 +29,15 @@ Rayhit* Sphere::intersect(Vec3 pixel, Vec3 vector, Geom* geom){
 	float minus = fmax(0.0f, (p1 - p4)); 
 	float t = fmin(plus, minus);
 
+	if( t<= 0){
+		Rayhit * r = new Rayhit();
+		r->isNull = 1;
+		//std::cout << "wtfm9\n";
+		return r;
+	}
 	Rayhit* r = new Rayhit();
 	r->position = Vec3::mul(t, d);
+	r->direction = d;
 	r->position = Vec3::add(e, r->position);
 	r->time = t;
 	return r;

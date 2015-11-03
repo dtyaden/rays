@@ -9,6 +9,7 @@
 #include "rayhit.h"
 #include "vec3.h"
 #include "sphere.h"
+#include "string.h"
 
 using namespace std;
 
@@ -17,127 +18,199 @@ Camera* camera;
 std::vector<Geom*> scene;
 std::vector<Triangle*> triangles;
 std::vector<Sphere*> spheres;
-
-void makeImage(unsigned char image[], unsigned int pixels){
-	unsigned int position = 0;
-	
-	for(int i = 0; i < pixels;i++){
-		image[position++] = 255;
-		image[position++] = 255;
-		image[position++] = 255;
-		
-		//cout<< "Row: " << i/width <<"\n";
-	}
-}
-
-Ray getRay(Vec3 position, Vec3 pixel){
-	Vec3 v = Vec3::subtract(pixel, position);
-	v = Vec3::normalize(v);
-	Ray r = Ray(v, pixel);
-	return r;
-}
-
-float getTSphere(Vec3 center, Vec3 pixel, Vec3 vector, float radius){
-	Vec3 c = center;
-	Vec3 d = vector;
-	Vec3 e = pixel;
-	Vec3 emc = Vec3::subtract(c, e);
-	float ddotd = Vec3::dot(d, d); //d.d
-	float p1 = -1 * Vec3::dot(emc, d); //-d.(e-c)
-	float p2 = Vec3::dot(emc, d); //d.(e-c)
-	p2 *= p2; //(d.(e-c))^2
-	float p3 = Vec3::dot(emc, emc); //(e-c).(e-c)
-	p3 -= radius * radius; //-R^2
-	p3 *= ddotd;
-	float p4 = p2 - p3;
-	p4 = sqrt(p4);
-	float plus = (p1 + p4) / ddotd;
-	float minus = (p1 - p4) / ddotd; 
-	return min(plus, minus);
-}
-
-float getTTriangle(Triangle* t, Vec3 pixel, Vec3 vector ){ //Pixel = start
-	float A = t->a.x - t->b.x;
-	float B = t->a.y - t->b.y;
-	float C = t->a.z - t->b.z;
-	float D = t->a.x - t->c.x;
-	float E = t->a.y - t->c.y;
-	float F = t->a.x - t->c.z;
-	float G = pixel.x;
-	float H = pixel.y;
-	float I = pixel.z;
-	float J = t->a.x - vector.x;
-	float K = t->a.y - vector.y;
-	float L = t->a.z - vector.z;
-
-
-	float M = (A*((E*I)-(H*F))) + (B*((G*F)-(D*I)))+(C*((D*H)-(E*G)));
-
-	float tValue = -(F*((A*K)-(J*B))+E*((J*C)-(A*L)) + D*((B*L)-(K*C)))/M;
-	if(t<0)//no hit
-		return -1;
-
-	float Gamma = (I*((A*K)-(J*B)) + H*((J*C)-(A*L)) + G*((B*L)-(K*C)))/M;
-	if(Gamma < 0 || Gamma > 1)
-		return -1;
-
-	float Beta = (J*((E*I)-(H*F)) + K*((G*F)-(D*I)) + L*((D*H)-(E*G)))/M;
-	if(Beta < 0 || Beta > 1-Gamma)
-		return -1;
-	return tValue;
-	
-
-}
+Vec3 light(0,8,-13.5);
+int isSphere = 0;
+int renderReflections = 0;
+int mode = 0;
 
 //start = point of intersection, v = unit vector to light
 float diffuseIntersections(Vec3 start, Vec3 v, Vec3* normal){
 	float diffuse = Vec3::dot(v, *normal);
+
 	//diffuse = fabs(diffuse);
 	diffuse = diffuse*1/2 + .5;
-	cout << diffuse << "\n";
 	return diffuse;
 
 }
+
 //start = point of intersection, v = unit vector to light
-float shadow(Vec3 start, Vec3 v){
+float shadow(Rayhit* hit){
+
+	Vec3 v(Vec3::normalize(Vec3::subtract(hit->position, light)));
+
+	Vec3 start = hit->position;
 	Geom* closest = NULL;
 	float value = 1;
+	float multiplier = (float) 1/100;
 	float t = 999;
 
+
+	start.x = v.x*multiplier + start.x;
+	start.y = v.y*multiplier + start.y;
+	start.z = v.z*multiplier + start.z;
+	Rayhit* ray = new Rayhit();
+	ray -> isNull = 1;
+
 	for(int j = 0; j < triangles.size();j++){
-					Rayhit* r = triangles.at(j)->intersect(start, v, triangles.at(j));
-				
-				if(r->isNull);
-				else if(r->time < t){
-					t = r->time;
-					closest = triangles.at(j);
-					}
+		Rayhit* r = triangles.at(j)->intersect(start, v, triangles.at(j));
+		
+
+		if(r->isNull);
+		else if(r->time < t){
+			float rayLen, lightDistance;
+			rayLen = Vec3::length(Vec3::subtract(start, r->position));
+			lightDistance = Vec3::length(Vec3::subtract(start, light));
+			if (rayLen < lightDistance){ 
+				t = r->time;
+				closest = triangles.at(j);
+				ray = r;
 				}
-				for(int j = 0; j < spheres.size();j++){
-					Rayhit* r = spheres.at(j)->intersect(start, v, spheres.at(j));
-				
-				if(r->isNull);
-				else if(r->time < t){
-					t = r->time;
-					cout<<"hit..."<<"\n";
-					closest = spheres.at(j);
-					}
+			}
+		}
+	for(int j = 0; j < spheres.size();j++){
+		Rayhit* r = spheres.at(j)->intersect(start, v, spheres.at(j));
+			
+		if(r->isNull);
+		else if(r->time < t){
+			float rayLen, lightDistance;
+			rayLen = Vec3::length(Vec3::subtract(start, r->position));
+			lightDistance = Vec3::length(Vec3::subtract(start, light));
+			if(isSphere){
+		}
+			if(rayLen < lightDistance){
+			t = r->time;
+			closest = spheres.at(j);
+			ray = r;
 				}
-				if(closest == NULL)
-					return value;
-				else return .2;
+			}
+		}
+		if(ray->isNull)
+			return value;
+		else return .2;
 }
 
-void addTriangle(Vec3 a, Vec3 b, Vec3 c, Vec3 color){
+Vec3 reflection(Rayhit* hit, int n, Vec3* normal,Geom* intersectedGeom){
+	Vec3 direction;
+	Vec3 reflectionVector;
+	float a;
+	direction = hit->direction;
+	a = 2*Vec3::dot(direction, *normal);
+	reflectionVector = Vec3::normalize(Vec3::subtract(Vec3::mul(a, *normal), direction));
+
+	Vec3 start = hit->position;
+	Geom* closest = NULL;
+	float value = 1;
+	float multiplier = (float) 1/100;
+	float t = 999;
+
+	start.x = reflectionVector.x*multiplier + start.x;
+	start.y = reflectionVector.y*multiplier + start.y;
+	start.z = reflectionVector.z*multiplier + start.z;
+	Rayhit* ray = new Rayhit();
+	ray -> isNull = 1;
+
+	for(int j = 0; j < triangles.size();j++){
+		Rayhit* r = triangles.at(j)->intersect(start, reflectionVector, triangles.at(j));
+		
+		if(r->isNull);
+		else if(r->time < t){
+			Triangle* temp = triangles.at(j);
+			closest = temp;				
+			hit = r;
+			isSphere = 0;
+			//calculate normal for triangle
+			Vec3 p1 = Vec3::subtract(temp->a, temp->b);
+			Vec3 p2 = Vec3::subtract(temp->a, temp->c);
+			normal = new Vec3(Vec3::normalize(Vec3::cross(p1,p2)));
+			ray = r;
+			}
+		}
+	for(int j = 0; j < spheres.size();j++){
+		Rayhit* r = spheres.at(j)->intersect(start, reflectionVector, spheres.at(j));
+			
+		if(r->isNull);
+		else if(r->time < t){
+			t = r->time;
+			normal = new Vec3(Vec3::normalize(Vec3::subtract(spheres.at(j)->position, hit->position)));
+			closest = spheres.at(j);
+			ray = r;
+			}
+		}
+
+		if(ray->isNull || n > 10){
+			if(n>10)
+				cout<<"what\n";
+			Vec3::print(hit->position);
+			cout<< " hit pos\n";
+			Vec3::print(hit->direction);
+			cout<< " hit dir\n";
+			Vec3::print(*normal);
+			cout<< " hit norm\n";
+			Vec3::print(reflectionVector);
+			cout<< " reflection\n";
+			//cout<<"returning black\n";
+			return Vec3(0,0,0);//return black after ten bounces/no hit
+		}
+		else if(closest->reflective){
+			return reflection(ray, ++n, normal, closest);
+			cout<<"reflection\n";
+		}
+		else{
+			//cout<<"returning actual color\n";
+			Vec3 hitToLight = Vec3::normalize(Vec3::subtract(ray->position, light));
+			float inShadow = shadow(hit);
+			float diffuse = 1;
+			if(inShadow)
+				diffuse = diffuseIntersections(ray->position, Vec3::normalize(hitToLight), normal);
+			else diffuse = 1;
+			Vec3 newColor(Vec3::mul(diffuse,(Vec3::mul(inShadow,closest->color))));
+			
+			return newColor;
+		}
+
+}
+
+
+void addTriangle(Vec3 a, Vec3 b, Vec3 c, Vec3 color, int reflective){
 	Triangle * tri = new Triangle(a,b,c, color);
+	tri->reflective = reflective;
 	triangles.push_back(tri);
 	scene.push_back(tri);
 }
 
-void addSphere(float radius, Vec3 position, Vec3 color){
+void addSphere(float radius, Vec3 position, Vec3 color, int reflective){
 	Sphere* sp =  new Sphere(radius,position, color);
+	sp->reflective = reflective;
 	spheres.push_back(sp);
 	scene.push_back(sp);
+}
+
+void buildReference(){
+	Vec3 x(-6,-2,-30);
+	Vec3 y(8,-2,-30);
+	Vec3 z(8,10,-30);
+	addTriangle(x,y,z, Vec3(1,0,1),0);
+	x = Vec3(-6,-2,-30);
+	y = Vec3(8,10,-30);
+	z = Vec3(-6, 10, -30);
+	addTriangle(x,y,z, Vec3(1,0,1),0);
+
+	x = Vec3(8,10,-30);
+	y = Vec3(8,-2,-30);
+	z = Vec3(8,-2,-15);
+	addTriangle(x,y,z,Vec3(1,0,0),0);
+	x = Vec3(-6,-2,-30);
+	y = Vec3(8,-2,-15);
+	z = Vec3(8,-2,-30);
+	addTriangle(x,y,z,Vec3(.5,.5,.5),0);
+	x = Vec3(-6,-2,-30);
+	y = Vec3(-6,-2,-15);
+	z = Vec3(8,-2,-15);
+	addTriangle(x,y,z,Vec3(.5,.5,.5),0);
+
+	addSphere(1, Vec3(-3,-1,-14), Vec3(1,0,0),0);
+	addSphere(1,Vec3(3,-1,-14), Vec3(0,0,1),1);
+	addSphere(2,Vec3(0,0,-16),Vec3(0,0,0),1);
 }
 
 int main(int argc, char *argv[]){
@@ -147,58 +220,46 @@ int main(int argc, char *argv[]){
 	unsigned char colorR;
 	unsigned char colorG;
 	unsigned char colorB;
-	Vec3 light(3,5,-15);
 	camera = new Camera(Vec3(0,0,0), distanceToCamera, (float) width, (float) width);
 	camera->test();
-	Vec3 x(-6,-2,-30);
-	Vec3 y(8,-2,-30);
-	Vec3 z(8,10,-30);
-	Triangle * tri = new Triangle(x,y,z, Vec3(1,0,1));
-	triangles.push_back(tri);
-	scene.push_back(tri);
-	x = Vec3(-6,-2,-30);
-	y = Vec3(8,10,-30);
-	z = Vec3(-6, 10, -30);
-	addTriangle(x,y,z, Vec3(1,0,1));
 
-	x = Vec3(8,10,-30);
-	y = Vec3(8,-2,-30);
-	z = Vec3(8,-2,-15);
-	addTriangle(x,y,z,Vec3(1,0,0));
-	Sphere * sp =  new Sphere(1,Vec3(-4,0,-10), Vec3(1,0,0));
-	//spheres.push_back(sp);
-	//scene.push_back(sp); //Radius? pos, color
-	sp =  new Sphere(1,Vec3(-2,0,-10), Vec3(1,0,0));
+	if(argc<2){
+		cout<<"no argument specified, rendering to reference.png\n";
+		buildReference();
+	}else if(strcmp(argv[1],"custom") == 0){
+		mode = 1;
+	}
+	else buildReference();
+
+	
 	//spheres.push_back(sp);
 	//scene.push_back(sp);
-	addSphere(2, Vec3(0,0,-16), Vec3(1,0,0));
-	addSphere(1,Vec3(-2,-3,-10), Vec3(1,0,0));
+	
 	//spheres.push_back(sp);
 	//scene.push_back(sp);
 	unsigned int imagePixels = height*width;
 	unsigned char image[height*width*3];//red,green,blue
 	unsigned int imagePointer = 0;
-	//makeImage(image, imagePixels);
 
 	float smahBoat[2];
 	for(int x = 0; x < width; x++){//row
 		for(int y = 0; y < height; y++){//column
+
+
 			smahBoat[0] = (float) ((x*2.0)/height)-1.0 ;
 			smahBoat[1] = (float) ((y*2.0)/width)*-1+1.0;
 			
-			getRay(camera->position, Vec3(smahBoat[1], smahBoat[0], -distanceToCamera)); 
 			Vec3 pixel(smahBoat[1]*-1,smahBoat[0]*-1,-distanceToCamera);
-			//cout<<pixel.x<<" "<<pixel.y<<" "<<pixel.z<<"\n";
-			//Vector from Pixel to Camera (GetRay?)
 			Vec3 v = Vec3::subtract(camera->position ,pixel);
-			//cout<< v.x<< " " << v.y<< " " <<v.z<< "\n";
 			
 			//Normalize Vector : Pixel to Camera
 			v = Vec3::normalize(v);//ray
 			float t = 999;
 			Geom* closest = NULL;
-			Rayhit* hit = NULL;
+			Rayhit* hit = new Rayhit();
+			hit->isNull = 1;
 			Vec3* normal;
+			int test = 0;
 				for(int j = 0; j < triangles.size();j++){
 					Rayhit* r = triangles.at(j)->intersect(pixel, v, triangles.at(j));
 				
@@ -208,6 +269,7 @@ int main(int argc, char *argv[]){
 					Triangle* temp = triangles.at(j);
 					closest = temp;
 					hit = r;
+					isSphere = 0;
 					//calculate normal for triangle
 					Vec3 p1 = Vec3::subtract(temp->a, temp->b);
 					Vec3 p2 = Vec3::subtract(temp->a, temp->c);
@@ -222,23 +284,43 @@ int main(int argc, char *argv[]){
 					t = r->time;
 					closest = spheres.at(j);
 					hit = r;
+					isSphere = 1;
 					//calculate normal for the sphere
 					normal = new Vec3(Vec3::normalize(Vec3::subtract(spheres.at(j)->position, hit->position)));
 					}
 				}
+			if( hit->isNull){
 
-			if(closest == NULL){
 				colorR = 0;
 				colorG = 0;
 				colorB = 0;
 			}
 			else{
-				float value = diffuseIntersections(hit->position, Vec3::normalize(Vec3::subtract(hit->position, light)), normal);
-				//cout<<tri->color.x<<"\n";
-				//cout<<closest->color.x<<"\n";
-				colorR = closest->color.x*255 * value;
-				colorG = closest->color.y*255 * value;
-				colorB = closest->color.z*255 * value;
+				if(closest->reflective){
+					Vec3 color;
+					if(renderReflections){
+					Vec3 color(reflection(hit, 0, normal, closest));
+				}
+				 	else color = Vec3(0,0,0);
+					colorR = color.x;
+					colorG = color.y;
+					colorB = color.z;
+					//Vec3::print(color);
+					//cout<<"\n";
+				}
+				else{
+					Vec3 hitToLight = Vec3::normalize(Vec3::subtract(hit->position, light));
+					float inShadow = shadow(hit);
+					float diffuse = 1;
+					if(inShadow)
+						diffuse = diffuseIntersections(hit->position, Vec3::normalize(hitToLight), normal);
+					else diffuse = 1;
+
+					colorR = closest->color.x*255 * diffuse*inShadow;
+					colorG = closest->color.y*255 * diffuse*inShadow;
+					colorB = closest->color.z*255 * diffuse*inShadow;
+					isSphere = 0;
+				}
 			}
 
 			image[imagePointer++] = colorR;
@@ -247,9 +329,9 @@ int main(int argc, char *argv[]){
 			//cout << v.x<<" "<<v.y << " " << v.z <<"\n";
 		}
 	} 
-	
-	cout << stbi_write_png("dummy.png", width,height,3,image,width*3) << "\n";
-	cout << "dumb\n";
+	if(mode == 0)
+		stbi_write_png("reference.png", width,height,3,image,width*3);
+	else stbi_write_png("custom.png", width,height,3,image,width*3);
 }
 
 

@@ -10,6 +10,7 @@ class Rayhit{
 		int isNull;
 		int shading;
 		Vec3 position;
+		Vec3 direction;
 		Ray ray;
 		Rayhit(){isNull = 0;};
 };
